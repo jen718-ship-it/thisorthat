@@ -1,0 +1,1130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>This or That?</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-gradient: linear-gradient(135deg, #dbeafe 0%, #ede9fe 50%, #fce7f3 100%);
+      --card-shadow: 0 14px 32px -8px rgba(79, 70, 229, 0.16), 0 4px 12px -2px rgba(30, 41, 59, 0.06);
+      --tile-shadow: 0 4px 0 #cbd5e1, 0 8px 16px rgba(15, 23, 42, 0.08);
+      --tile-active-shadow: 0 2px 0 #cbd5e1, 0 4px 8px rgba(15, 23, 42, 0.12);
+    }
+
+    * {
+      box-sizing: border-box;
+      user-select: none;
+      -webkit-user-select: none;
+      touch-action: manipulation;
+    }
+
+    html, body {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100dvh;
+      overflow: hidden;
+      font-family: 'Fredoka', sans-serif;
+      background: var(--bg-gradient);
+      color: #1e293b;
+    }
+
+    /* Subtle playful background accents */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image:
+        radial-gradient(circle at 12% 18%, rgba(96, 165, 250, 0.22) 0 18px, transparent 19px),
+        radial-gradient(circle at 88% 14%, rgba(251, 191, 36, 0.24) 0 22px, transparent 23px),
+        radial-gradient(circle at 8% 82%, rgba(52, 211, 153, 0.2) 0 24px, transparent 25px),
+        radial-gradient(circle at 92% 78%, rgba(192, 132, 252, 0.22) 0 20px, transparent 21px);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    /* Tactile 3D Word Tiles */
+    .word-tile {
+      background: #ffffff;
+      border: 2.5px solid #e2e8f0;
+      box-shadow: var(--tile-shadow);
+      border-radius: 16px;
+      cursor: grab;
+      transition: transform 0.16s cubic-bezier(0.34, 1.56, 0.64, 1),
+                  box-shadow 0.16s ease,
+                  border-color 0.16s ease,
+                  background-color 0.16s ease;
+      touch-action: none;
+    }
+
+    .word-tile:hover {
+      transform: translateY(-2px);
+      border-color: #93c5fd;
+    }
+
+    .word-tile:active {
+      cursor: grabbing;
+      transform: translateY(2px);
+      box-shadow: var(--tile-active-shadow);
+    }
+
+    /* Color coding by word type for intuitive visual grouping */
+    .word-tile[data-group="demo"] {
+      background: #dbeafe;
+      border-color: #3b82f6;
+      box-shadow: 0 4px 0 #2563eb, 0 8px 15px rgba(37, 99, 235, 0.18);
+      color: #1d4ed8;
+    }
+    .word-tile[data-group="article"] {
+      background: #fef3c7;
+      border-color: #f59e0b;
+      box-shadow: 0 4px 0 #d97706, 0 8px 15px rgba(217, 119, 6, 0.18);
+      color: #b45309;
+    }
+    .word-tile[data-group="noun"] {
+      background: #d1fae5;
+      border-color: #10b981;
+      box-shadow: 0 4px 0 #059669, 0 8px 15px rgba(5, 150, 105, 0.18);
+      color: #047857;
+    }
+
+    /* Floating Drag Ghost */
+    .drag-clone {
+      position: fixed;
+      z-index: 9999;
+      pointer-events: none;
+      margin: 0 !important;
+      transform-origin: center center;
+      transition: transform 0.08s ease-out, box-shadow 0.15s ease;
+      box-shadow: 0 18px 32px rgba(37, 99, 235, 0.25), 0 4px 0 #93c5fd !important;
+    }
+
+    /* Drop Slots & Magnetic Field Guides */
+    .drop-slot {
+      position: relative;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 92px;
+      height: 50px;
+      padding: 0 12px;
+      border-radius: 16px;
+      background: #ffffff;
+      border: 3px dashed #94a3b8;
+      transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+      vertical-align: middle;
+    }
+
+    .drop-slot[data-slot="0"] {
+      background: rgba(219, 234, 254, 0.65);
+      border-color: #60a5fa;
+    }
+    .drop-slot[data-slot="1"] {
+      background: rgba(254, 243, 199, 0.65);
+      border-color: #fbbf24;
+    }
+    .drop-slot[data-slot="2"] {
+      background: rgba(209, 250, 229, 0.65);
+      border-color: #34d399;
+    }
+
+    @media (min-width: 640px) {
+      .drop-slot {
+        min-width: 112px;
+        height: 56px;
+        padding: 0 16px;
+      }
+    }
+
+    /* Subtle inner magnetic target guide dots/ring */
+    .drop-slot::before {
+      content: '';
+      position: absolute;
+      inset: -10px;
+      border-radius: 24px;
+      border: 2px dashed transparent;
+      pointer-events: none;
+      transition: all 0.22s ease;
+    }
+
+    .drop-slot::after {
+      content: '';
+      width: 10px;
+      height: 10px;
+      border-radius: 9999px;
+      background: #64748b;
+      opacity: 0.45;
+      transition: all 0.2s ease;
+    }
+
+    .drop-slot.filled::after {
+      display: none;
+    }
+
+    /* Magnetic Field Active Attraction State */
+    .drop-slot.magnetic-active {
+      border-style: solid;
+      border-color: #3b82f6;
+      background: #eff6ff;
+      transform: scale(1.07);
+      box-shadow: 0 0 0 6px rgba(59, 130, 246, 0.18), inset 0 0 12px rgba(59, 130, 246, 0.15);
+    }
+
+    .drop-slot.magnetic-active::before {
+      border-color: rgba(59, 130, 246, 0.55);
+      animation: magneticPulse 1s infinite ease-in-out;
+    }
+
+    .drop-slot.magnetic-active::after {
+      background: #3b82f6;
+      transform: scale(1.5);
+      opacity: 1;
+    }
+
+    /* Filled slot styling */
+    .drop-slot.filled {
+      border-style: solid;
+      border-color: transparent !important;
+      background: transparent !important;
+      padding: 0;
+    }
+
+    .drop-slot.filled .placed-tile {
+      width: 100%;
+      height: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      animation: popIn 0.24s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+
+    /* Slot feedback states */
+    .drop-slot.slot-correct .placed-tile {
+      background: #dcfce7 !important;
+      border-color: #22c55e !important;
+      box-shadow: 0 4px 0 #16a34a !important;
+      color: #15803d !important;
+    }
+
+    .drop-slot.slot-wrong .placed-tile {
+      background: #fee2e2 !important;
+      border-color: #ef4444 !important;
+      box-shadow: 0 4px 0 #dc2626 !important;
+      color: #b91c1c !important;
+    }
+
+    /* Animations */
+    @keyframes magneticPulse {
+      0%, 100% { transform: scale(1); opacity: 0.85; }
+      50% { transform: scale(1.06); opacity: 0.35; }
+    }
+
+    @keyframes popIn {
+      0% { transform: scale(0.75); opacity: 0.5; }
+      100% { transform: scale(1); opacity: 1; }
+    }
+
+    @keyframes shakeHorizontal {
+      0%, 100% { transform: translateX(0); }
+      20% { transform: translateX(-10px); }
+      40% { transform: translateX(10px); }
+      60% { transform: translateX(-7px); }
+      80% { transform: translateX(7px); }
+    }
+
+    .shake {
+      animation: shakeHorizontal 0.45s cubic-bezier(0.36, 0.07, 0.19, 0.97) both;
+    }
+
+    @keyframes starEarn {
+      0% { transform: scale(0.5) rotate(-25deg); }
+      60% { transform: scale(1.38) rotate(12deg); }
+      100% { transform: scale(1) rotate(0deg); }
+    }
+
+    .star-earned {
+      animation: starEarn 0.55s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+    }
+
+    @keyframes floatSlow {
+      0%, 100% { transform: translateY(0px); }
+      50% { transform: translateY(-4px); }
+    }
+
+    .float-item {
+      animation: floatSlow 3.2s ease-in-out infinite;
+    }
+
+    /* Icon Buttons */
+    .icon-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 16px;
+      transition: transform 0.15s cubic-bezier(0.34, 1.56, 0.64, 1),
+                  box-shadow 0.15s ease,
+                  background-color 0.15s ease,
+                  opacity 0.15s ease;
+    }
+    .icon-btn:hover:not(:disabled) {
+      transform: translateY(-2px);
+    }
+    .icon-btn:active:not(:disabled) {
+      transform: translateY(2px);
+    }
+    .icon-btn:disabled {
+      opacity: 0.42;
+      cursor: not-allowed;
+    }
+
+    /* Confetti canvas */
+    #fx-canvas {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 50;
+    }
+  </style>
+</head>
+<body class="h-[100dvh] w-full flex flex-col justify-between items-center px-3 py-2.5 sm:px-5 sm:py-3 gap-2.5 overflow-hidden">
+
+  <!-- Particle Effects Canvas -->
+  <canvas id="fx-canvas"></canvas>
+
+  <!-- TOP BAR: Title, 8-Star Progress Bar, Utility Icon Buttons -->
+  <header class="w-full max-w-5xl flex flex-col gap-2 z-10 shrink-0">
+    <div class="flex items-center justify-between gap-2">
+      <!-- Game Title Pill -->
+      <div class="flex items-center gap-2.5 bg-gradient-to-r from-indigo-600 to-blue-600 px-4 py-1.5 sm:py-2 rounded-2xl shadow-[0_4px_0_#1e3a8a] border-2 border-indigo-400">
+        <span class="w-3.5 h-3.5 rounded-full bg-amber-300 inline-block shadow-sm"></span>
+        <h1 class="text-lg sm:text-2xl font-bold tracking-tight text-white drop-shadow-sm">This or That?</h1>
+        <span class="w-3.5 h-3.5 rounded-full bg-rose-400 inline-block shadow-sm"></span>
+      </div>
+
+      <!-- Top Right Icon Controls: Sound Toggle & Fullscreen Toggle -->
+      <div class="flex items-center gap-2.5">
+        <button id="btn-sound" type="button" aria-label="Sound"
+          class="icon-btn w-10 h-10 sm:w-11 sm:h-11 bg-sky-100 hover:bg-sky-200 border-2 border-sky-400 shadow-[0_4px_0_#0284c7] text-sky-700">
+          <!-- Sound On SVG -->
+          <svg id="icon-sound-on" class="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+            <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" fill="currentColor" fill-opacity="0.2"/>
+            <path d="M15.54 8.46a5 5 0 0 1 0 7.07"/>
+            <path d="M19.07 4.93a10 10 0 0 1 0 14.14"/>
+          </svg>
+          <!-- Sound Off SVG -->
+          <svg id="icon-sound-off" class="w-6 h-6 hidden text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+            <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/>
+            <line x1="23" y1="9" x2="17" y2="15"/>
+            <line x1="17" y1="9" x2="23" y2="15"/>
+          </svg>
+        </button>
+
+        <button id="btn-fullscreen" type="button" aria-label="Fullscreen"
+          class="icon-btn w-11 h-11 sm:w-12 sm:h-12 bg-violet-100 hover:bg-violet-200 border-2 border-violet-400 shadow-[0_4px_0_#7c3aed] text-violet-700">
+          <!-- Enter Fullscreen SVG -->
+          <svg id="icon-fs-enter" class="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="15 3 21 3 21 9"/>
+            <polyline points="9 21 3 21 3 15"/>
+            <line x1="21" y1="3" x2="14" y2="10"/>
+            <line x1="3" y1="21" x2="10" y2="14"/>
+          </svg>
+          <!-- Exit Fullscreen SVG -->
+          <svg id="icon-fs-exit" class="w-6 h-6 hidden" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="4 14 10 14 10 20"/>
+            <polyline points="20 10 14 10 14 4"/>
+            <line x1="14" y1="10" x2="21" y2="3"/>
+            <line x1="3" y1="21" x2="10" y2="14"/>
+          </svg>
+        </button>
+      </div>
+    </div>
+
+    <!-- 16-Step Progress Bar with 8 Milestone Stars -->
+    <div class="w-full bg-amber-100/95 backdrop-blur px-4 sm:px-6 py-1.5 rounded-2xl shadow-[0_4px_0_#f59e0b] border-2 border-amber-400">
+      <div class="relative w-full h-6 sm:h-7 flex items-center">
+        <!-- Track Background -->
+        <div class="w-full h-3.5 sm:h-4 bg-amber-200/90 rounded-full overflow-hidden p-0.5 border border-amber-300">
+          <div id="progress-fill" class="h-full w-0 bg-gradient-to-r from-sky-400 via-indigo-500 to-emerald-400 rounded-full transition-all duration-500 ease-out"></div>
+        </div>
+        <!-- 8 Stars Overlay evenly spaced with safe inner margins -->
+        <div id="stars-container" class="absolute inset-0 flex items-center justify-between pl-[8%] pr-1 pointer-events-none"></div>
+      </div>
+    </div>
+  </header>
+
+  <!-- CENTER STAGE: Picture Scene Card + Incomplete Sentence Card -->
+  <main id="game-stage" class="w-full max-w-5xl flex-1 min-h-0 flex flex-col justify-between items-center gap-2.5 z-10 overflow-hidden">
+
+    <!-- Visual Scene Container -->
+    <div id="scene-card" class="w-full max-w-4xl flex-1 min-h-0 bg-gradient-to-b from-sky-50 via-amber-50/70 to-amber-100/90 rounded-3xl border-4 border-sky-400 shadow-[var(--card-shadow)] p-2.5 sm:p-4 flex items-center justify-center relative overflow-hidden">
+      <!-- Subtle decorative ground plane -->
+      <div class="absolute bottom-0 inset-x-0 h-12 bg-gradient-to-t from-amber-200/60 to-transparent pointer-events-none"></div>
+      <div id="scene-svg-wrapper" class="w-full h-full min-h-0 flex items-center justify-center relative z-10 overflow-hidden"></div>
+    </div>
+
+    <!-- Sentence Builder & Action Controls Card -->
+    <div id="sentence-card" class="w-full max-w-5xl shrink-0 bg-gradient-to-r from-indigo-50 via-purple-50 to-pink-50 rounded-3xl border-4 border-indigo-400 shadow-[var(--card-shadow)] px-3 py-2.5 sm:px-5 sm:py-3 flex flex-col lg:flex-row items-center justify-between gap-2.5">
+
+      <!-- Sentence Pattern: "What's [slot 0]? It's [slot 1] [slot 2]." -->
+      <div class="flex flex-wrap items-center justify-center gap-x-2 gap-y-1.5 text-xl sm:text-2xl md:text-3xl font-bold text-indigo-950">
+        <span>What's</span>
+        <span class="inline-flex items-center gap-1 whitespace-nowrap">
+          <span id="slot-0" data-slot="0" class="drop-slot"></span>
+          <span>?</span>
+        </span>
+        <span class="ml-1">It's</span>
+        <div id="slot-1" data-slot="1" class="drop-slot"></div>
+        <span class="inline-flex items-center gap-1 whitespace-nowrap">
+          <span id="slot-2" data-slot="2" class="drop-slot"></span>
+          <span>.</span>
+        </span>
+      </div>
+
+      <!-- Icon-Only Action Buttons: Clear/Reset & Submit -->
+      <div class="flex items-center gap-3 shrink-0">
+        <!-- Clear Slots Button -->
+        <button id="btn-clear" type="button" aria-label="Clear"
+          class="icon-btn w-11 h-11 sm:w-12 sm:h-12 p-2.5 bg-amber-100 hover:bg-amber-200 border-2 border-amber-400 shadow-[0_4px_0_#d97706] text-amber-800">
+          <svg class="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/>
+            <path d="M3 3v5h5"/>
+          </svg>
+        </button>
+
+        <!-- Submit Answer Button -->
+        <button id="btn-submit" type="button" aria-label="Submit" disabled
+          class="icon-btn w-14 h-11 sm:w-16 sm:h-12 p-2.5 bg-emerald-500 hover:bg-emerald-400 border-2 border-emerald-700 shadow-[0_4px_0_#047857] text-white">
+          <svg class="w-7 h-7" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="20 6 9 17 4 12"/>
+          </svg>
+        </button>
+      </div>
+    </div>
+  </main>
+
+  <!-- VICTORY OVERLAY (Shown after 16 sentences & 8 stars) -->
+  <section id="victory-screen" class="hidden w-full max-w-2xl flex-1 min-h-0 flex-col items-center justify-center z-20">
+    <div class="w-full bg-gradient-to-b from-amber-50 to-yellow-100 rounded-3xl border-4 border-amber-400 shadow-[var(--card-shadow)] p-6 sm:p-10 flex flex-col items-center gap-6">
+      <!-- Trophy SVG -->
+      <div class="w-28 h-28 sm:w-32 sm:h-32 rounded-full bg-white border-4 border-amber-300 flex items-center justify-center shadow-md float-item">
+        <svg class="w-16 h-16 sm:w-20 sm:h-20 text-amber-400" viewBox="0 0 24 24" fill="currentColor" stroke="#d97706" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/>
+          <path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/>
+          <path d="M4 22h16"/>
+          <path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/>
+          <path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/>
+          <path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/>
+        </svg>
+      </div>
+
+      <!-- 8 Earned Stars Grid -->
+      <div id="victory-stars" class="grid grid-cols-4 sm:grid-cols-8 gap-3 sm:gap-4"></div>
+
+      <!-- Replay Icon Button -->
+      <button id="btn-replay" type="button" aria-label="Replay"
+        class="icon-btn w-20 h-16 bg-gradient-to-b from-blue-500 to-indigo-600 hover:from-blue-400 hover:to-indigo-500 border-2 border-indigo-700 shadow-[0_5px_0_#1e3a8a] text-white">
+        <svg class="w-9 h-9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8"/>
+          <path d="M21 3v5h-5"/>
+        </svg>
+      </button>
+    </div>
+  </section>
+
+  <!-- BOTTOM TILE BANK: Draggable Word Tiles -->
+  <footer id="tile-bank-wrapper" class="w-full max-w-5xl shrink-0 bg-gradient-to-r from-violet-100/95 via-indigo-100/95 to-sky-100/95 backdrop-blur rounded-3xl border-4 border-violet-400 shadow-[0_5px_0_#8b5cf6] px-2.5 py-2 sm:px-4 sm:py-2.5 z-10">
+    <div id="tile-bank" class="flex flex-wrap lg:flex-nowrap items-center justify-center gap-1.5 sm:gap-2">
+      <!-- Tiles injected dynamically -->
+    </div>
+  </footer>
+
+  <script>
+    (() => {
+      'use strict';
+
+      /* =====================================================================
+       * 1. SOUND ENGINE (Web Audio API - Zero external dependencies)
+       * ===================================================================== */
+      class SoundFX {
+        constructor() {
+          this.ctx = null;
+          this.muted = false;
+        }
+
+        ensureContext() {
+          if (!this.ctx) {
+            const AudioCtx = window.AudioContext || window.webkitAudioContext;
+            if (AudioCtx) this.ctx = new AudioCtx();
+          }
+          if (this.ctx && this.ctx.state === 'suspended') {
+            this.ctx.resume().catch(() => {});
+          }
+        }
+
+        playTone(freq, type, duration, startTimeOffset = 0, gainVal = 0.14) {
+          if (this.muted) return;
+          this.ensureContext();
+          if (!this.ctx) return;
+
+          const now = this.ctx.currentTime + startTimeOffset;
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+
+          osc.type = type;
+          osc.frequency.setValueAtTime(freq, now);
+
+          gain.gain.setValueAtTime(0.001, now);
+          gain.gain.exponentialRampToValueAtTime(gainVal, now + 0.015);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + duration);
+
+          osc.connect(gain);
+          gain.connect(this.ctx.destination);
+
+          osc.start(now);
+          osc.stop(now + duration + 0.02);
+        }
+
+        pickup() {
+          this.playTone(420, 'sine', 0.08, 0, 0.1);
+        }
+
+        magnet() {
+          this.playTone(580, 'triangle', 0.06, 0, 0.07);
+        }
+
+        snap() {
+          this.playTone(520, 'sine', 0.09, 0, 0.14);
+          this.playTone(780, 'sine', 0.11, 0.04, 0.12);
+        }
+
+        remove() {
+          this.playTone(440, 'sine', 0.08, 0, 0.1);
+          this.playTone(320, 'sine', 0.09, 0.03, 0.09);
+        }
+
+        error() {
+          this.playTone(210, 'sawtooth', 0.16, 0, 0.09);
+          this.playTone(175, 'sawtooth', 0.22, 0.11, 0.09);
+        }
+
+        correct() {
+          this.playTone(523.25, 'triangle', 0.14, 0, 0.15);
+          this.playTone(659.25, 'triangle', 0.14, 0.09, 0.15);
+          this.playTone(783.99, 'triangle', 0.22, 0.18, 0.16);
+        }
+
+        starEarned() {
+          const notes = [523.25, 659.25, 783.99, 1046.50];
+          notes.forEach((n, i) => {
+            this.playTone(n, 'sine', 0.24, i * 0.07, 0.16);
+          });
+        }
+
+        victory() {
+          const fanfare = [523.25, 659.25, 783.99, 1046.50, 783.99, 1046.50];
+          const times = [0, 0.1, 0.2, 0.3, 0.45, 0.58];
+          fanfare.forEach((n, i) => {
+            this.playTone(n, 'triangle', 0.28, times[i], 0.17);
+          });
+        }
+      }
+
+      const sfx = new SoundFX();
+
+      /* =====================================================================
+       * 2. UPLOADED IMAGE ASSETS & GRAMMAR PARSER ("a" vs "an")
+       * ===================================================================== */
+      const IMAGE_FILES = [
+        'that book.png',
+        'that eraser.png',
+        'that marker.png',
+        'that pen.png',
+        'that pencil.png',
+        'this book.png',
+        'this eraser.png',
+        'this marker.png',
+        'this pen.png',
+        'this pencil.png'
+      ];
+
+      // Determine standard English indefinite article ("an" before vowel sounds, "a" before consonant sounds)
+      function getIndefiniteArticle(noun) {
+        return /^[aeiou]/i.test(noun.trim()) ? 'an' : 'a';
+      }
+
+      // Parse filename ("this eraser.png" -> { file, demo: 'this', article: 'an', noun: 'eraser' })
+      const PARSED_SCENES = IMAGE_FILES.map(file => {
+        const baseName = file.replace(/\.png$/i, '').trim().toLowerCase();
+        const [demo, noun] = baseName.split(/\s+/);
+        return {
+          file,
+          demo,
+          article: getIndefiniteArticle(noun),
+          noun
+        };
+      });
+
+      function renderSceneImage(round) {
+        const img = document.createElement('img');
+        img.src = round.file;
+        img.alt = '';
+        img.draggable = false;
+        img.className = 'max-h-full max-w-full w-auto h-auto object-contain select-none drop-shadow-md transition-transform duration-300';
+
+        // Fallback if unencoded space path fails in certain webviews
+        let triedEncoded = false;
+        img.onerror = () => {
+          if (!triedEncoded) {
+            triedEncoded = true;
+            img.src = encodeURI(round.file);
+          } else {
+            img.onerror = null;
+            img.src = `https://placehold.co/480x260/f8fafc/334155?text=${encodeURIComponent(round.demo + ' ' + round.noun)}`;
+          }
+        };
+
+        elSceneWrapper.innerHTML = '';
+        elSceneWrapper.appendChild(img);
+      }
+
+      /* =====================================================================
+       * 3. WORD BANK & 16-ROUND GENERATOR
+       * ===================================================================== */
+      const WORD_BANK = [
+        { word: 'this', group: 'demo' },
+        { word: 'that', group: 'demo' },
+        { word: 'a', group: 'article' },
+        { word: 'an', group: 'article' },
+        { word: 'pen', group: 'noun' },
+        { word: 'pencil', group: 'noun' },
+        { word: 'marker', group: 'noun' },
+        { word: 'eraser', group: 'noun' },
+        { word: 'ruler', group: 'noun' },
+        { word: 'book', group: 'noun' }
+      ];
+
+      function shuffleArray(arr) {
+        const copy = [...arr];
+        for (let i = copy.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [copy[i], copy[j]] = [copy[j], copy[i]];
+        }
+        return copy;
+      }
+
+      function generateRounds() {
+        // Include all 10 uploaded pictures once, plus 6 extra pictures (ensuring extra 'an eraser' practice) = 16 rounds
+        const firstPass = shuffleArray(PARSED_SCENES);
+        const eraserScenes = PARSED_SCENES.filter(s => s.noun === 'eraser');
+        const otherScenes = shuffleArray(PARSED_SCENES.filter(s => s.noun !== 'eraser')).slice(0, 4);
+        const secondPass = shuffleArray([...eraserScenes, ...otherScenes]);
+
+        let pool = [...firstPass, ...secondPass];
+
+        // Avoid identical consecutive pictures
+        for (let i = 1; i < pool.length; i++) {
+          if (pool[i].file === pool[i - 1].file) {
+            const swapIdx = (i + 2) % pool.length;
+            [pool[i], pool[swapIdx]] = [pool[swapIdx], pool[i]];
+          }
+        }
+        return pool;
+      }
+
+      /* =====================================================================
+       * 4. GAME STATE & DOM REFERENCES
+       * ===================================================================== */
+      const TOTAL_ROUNDS = 16;
+      const TOTAL_STARS = 8;
+      const MAGNET_RADIUS = 88; // px proximity for magnetic field capture
+
+      let rounds = [];
+      let currentRoundIdx = 0;
+      let slotValues = [null, null, null]; // [{ word, group }, ...]
+      let isTransitioning = false;
+
+      const elProgressFill = document.getElementById('progress-fill');
+      const elStarsContainer = document.getElementById('stars-container');
+      const elSceneWrapper = document.getElementById('scene-svg-wrapper');
+      const elSentenceCard = document.getElementById('sentence-card');
+      const elTileBank = document.getElementById('tile-bank');
+      const elTileBankWrapper = document.getElementById('tile-bank-wrapper');
+      const elGameStage = document.getElementById('game-stage');
+      const elVictoryScreen = document.getElementById('victory-screen');
+      const elVictoryStars = document.getElementById('victory-stars');
+
+      const slots = [
+        document.getElementById('slot-0'),
+        document.getElementById('slot-1'),
+        document.getElementById('slot-2')
+      ];
+
+      const btnSubmit = document.getElementById('btn-submit');
+      const btnClear = document.getElementById('btn-clear');
+      const btnSound = document.getElementById('btn-sound');
+      const btnFullscreen = document.getElementById('btn-fullscreen');
+      const btnReplay = document.getElementById('btn-replay');
+
+      /* =====================================================================
+       * 5. STAR PROGRESS BAR & PARTICLE CONFETTI
+       * ===================================================================== */
+      function createStarSVG(filled) {
+        return `
+          <svg class="w-6 h-6 sm:w-7 sm:h-7 drop-shadow-sm transition-colors duration-300 ${filled ? 'text-amber-400' : 'text-amber-300/80'}"
+               viewBox="0 0 24 24" fill="${filled ? 'currentColor' : '#fffbeb'}" stroke="${filled ? '#d97706' : '#f59e0b'}" stroke-width="2" stroke-linejoin="round">
+            <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+          </svg>
+        `;
+      }
+
+      function renderProgressBar(animateNewestStar = false) {
+        const pct = (currentRoundIdx / TOTAL_ROUNDS) * 100;
+        elProgressFill.style.width = `${pct}%`;
+
+        const earnedCount = Math.floor(currentRoundIdx / 2);
+        elStarsContainer.innerHTML = '';
+
+        for (let i = 1; i <= TOTAL_STARS; i++) {
+          const isEarned = i <= earnedCount;
+          const starBadge = document.createElement('div');
+          starBadge.className = 'w-7 h-7 flex items-center justify-center';
+          if (isEarned && animateNewestStar && i === earnedCount) {
+            starBadge.classList.add('star-earned');
+          }
+          starBadge.innerHTML = createStarSVG(isEarned);
+          elStarsContainer.appendChild(starBadge);
+        }
+      }
+
+      // Lightweight Canvas Confetti Celebration
+      const fxCanvas = document.getElementById('fx-canvas');
+      const fxCtx = fxCanvas.getContext('2d');
+      let particles = [];
+      let rafId = null;
+
+      function resizeFxCanvas() {
+        fxCanvas.width = window.innerWidth;
+        fxCanvas.height = window.innerHeight;
+      }
+      window.addEventListener('resize', resizeFxCanvas);
+      resizeFxCanvas();
+
+      function spawnConfetti(originX, originY, count = 34) {
+        const colors = ['#3b82f6', '#facc15', '#22c55e', '#f43f5e', '#a855f7', '#fb923c'];
+        for (let i = 0; i < count; i++) {
+          const angle = Math.random() * Math.PI * 2;
+          const speed = 3 + Math.random() * 6.5;
+          particles.push({
+            x: originX,
+            y: originY,
+            vx: Math.cos(angle) * speed,
+            vy: Math.sin(angle) * speed - 2.5,
+            size: 6 + Math.random() * 6,
+            color: colors[i % colors.length],
+            rot: Math.random() * 360,
+            vRot: (Math.random() - 0.5) * 14,
+            alpha: 1
+          });
+        }
+        if (!rafId) animateParticles();
+      }
+
+      function animateParticles() {
+        fxCtx.clearRect(0, 0, fxCanvas.width, fxCanvas.height);
+        particles.forEach(p => {
+          p.x += p.vx;
+          p.y += p.vy;
+          p.vy += 0.24; // gravity
+          p.rot += p.vRot;
+          p.alpha -= 0.018;
+        });
+        particles = particles.filter(p => p.alpha > 0);
+
+        particles.forEach(p => {
+          fxCtx.save();
+          fxCtx.globalAlpha = Math.max(0, p.alpha);
+          fxCtx.translate(p.x, p.y);
+          fxCtx.rotate((p.rot * Math.PI) / 180);
+          fxCtx.fillStyle = p.color;
+          fxCtx.fillRect(-p.size / 2, -p.size / 2, p.size, p.size * 0.65);
+          fxCtx.restore();
+        });
+
+        if (particles.length > 0) {
+          rafId = requestAnimationFrame(animateParticles);
+        } else {
+          rafId = null;
+        }
+      }
+
+      /* =====================================================================
+       * 6. TILE BANK & MAGNETIC DRAG-AND-DROP ENGINE
+       * ===================================================================== */
+      function buildTileBank() {
+        elTileBank.innerHTML = '';
+        WORD_BANK.forEach(item => {
+          const tile = document.createElement('button');
+          tile.type = 'button';
+          tile.className = 'word-tile px-3 py-1.5 sm:px-4 sm:py-2 text-lg sm:text-xl font-bold tracking-wide whitespace-nowrap';
+          tile.dataset.word = item.word;
+          tile.dataset.group = item.group;
+          tile.textContent = item.word;
+
+          attachDragAndTapHandlers(tile, item);
+          elTileBank.appendChild(tile);
+        });
+      }
+
+      function findNearestSlot(clientX, clientY) {
+        let bestSlot = null;
+        let bestDist = MAGNET_RADIUS;
+
+        slots.forEach((slotEl, idx) => {
+          const rect = slotEl.getBoundingClientRect();
+          const cx = rect.left + rect.width / 2;
+          const cy = rect.top + rect.height / 2;
+          const dist = Math.hypot(clientX - cx, clientY - cy);
+
+          if (dist < bestDist) {
+            bestDist = dist;
+            bestSlot = { el: slotEl, index: idx, cx, cy, dist };
+          }
+        });
+
+        return bestSlot;
+      }
+
+      function attachDragAndTapHandlers(tileEl, itemData) {
+        tileEl.addEventListener('pointerdown', (e) => {
+          if (isTransitioning || e.button !== 0) return;
+          e.preventDefault();
+          sfx.pickup();
+
+          const startX = e.clientX;
+          const startY = e.clientY;
+          let isDragging = false;
+          let clone = null;
+          let lastMagnetIndex = -1;
+
+          const rect = tileEl.getBoundingClientRect();
+          const offsetX = startX - rect.left;
+          const offsetY = startY - rect.top;
+
+          const createClone = () => {
+            clone = tileEl.cloneNode(true);
+            clone.classList.add('drag-clone');
+            clone.style.width = `${rect.width}px`;
+            clone.style.height = `${rect.height}px`;
+            clone.style.left = `${rect.left}px`;
+            clone.style.top = `${rect.top}px`;
+            document.body.appendChild(clone);
+            tileEl.style.opacity = '0.35';
+          };
+
+          const onPointerMove = (moveEvent) => {
+            const dx = moveEvent.clientX - startX;
+            const dy = moveEvent.clientY - startY;
+
+            if (!isDragging && Math.hypot(dx, dy) > 6) {
+              isDragging = true;
+              createClone();
+            }
+
+            if (!isDragging || !clone) return;
+
+            let targetX = moveEvent.clientX - offsetX;
+            let targetY = moveEvent.clientY - offsetY;
+
+            // Check magnetic proximity to slots
+            const nearest = findNearestSlot(moveEvent.clientX, moveEvent.clientY);
+
+            slots.forEach((s, i) => {
+              if (nearest && nearest.index === i) {
+                s.classList.add('magnetic-active');
+              } else {
+                s.classList.remove('magnetic-active');
+              }
+            });
+
+            if (nearest) {
+              if (lastMagnetIndex !== nearest.index) {
+                sfx.magnet();
+                lastMagnetIndex = nearest.index;
+              }
+              // Gentle magnetic pull toward the center of the target slot
+              const slotRect = nearest.el.getBoundingClientRect();
+              const snapLeft = slotRect.left + (slotRect.width - rect.width) / 2;
+              const snapTop = slotRect.top + (slotRect.height - rect.height) / 2;
+              targetX = targetX * 0.45 + snapLeft * 0.55;
+              targetY = targetY * 0.45 + snapTop * 0.55;
+              clone.style.transform = 'scale(1.06)';
+            } else {
+              lastMagnetIndex = -1;
+              clone.style.transform = 'scale(1.03) rotate(-2deg)';
+            }
+
+            clone.style.left = `${targetX}px`;
+            clone.style.top = `${targetY}px`;
+          };
+
+          const cleanup = () => {
+            window.removeEventListener('pointermove', onPointerMove);
+            window.removeEventListener('pointerup', onPointerUp);
+            window.removeEventListener('pointercancel', onPointerUp);
+            slots.forEach(s => s.classList.remove('magnetic-active'));
+            if (clone) {
+              clone.remove();
+              clone = null;
+            }
+            tileEl.style.opacity = '1';
+          };
+
+          const onPointerUp = (upEvent) => {
+            const nearest = findNearestSlot(upEvent.clientX, upEvent.clientY);
+            cleanup();
+
+            if (isDragging) {
+              if (nearest) {
+                placeWordInSlot(nearest.index, itemData);
+              }
+            } else {
+              // Tap-to-place convenience: smart-fill next available slot
+              handleTapPlace(itemData);
+            }
+          };
+
+          window.addEventListener('pointermove', onPointerMove);
+          window.addEventListener('pointerup', onPointerUp);
+          window.addEventListener('pointercancel', onPointerUp);
+        });
+      }
+
+      function handleTapPlace(itemData) {
+        // Place into the first empty slot (or matching logical slot if empty)
+        let targetIdx = slotValues.findIndex(v => v === null);
+        if (targetIdx === -1) {
+          // If all full, replace based on word group
+          if (itemData.group === 'demo') targetIdx = 0;
+          else if (itemData.group === 'article') targetIdx = 1;
+          else targetIdx = 2;
+        }
+        placeWordInSlot(targetIdx, itemData);
+      }
+
+      function placeWordInSlot(slotIdx, itemData) {
+        slotValues[slotIdx] = itemData;
+        sfx.snap();
+        renderSlots();
+        updateSubmitState();
+      }
+
+      function clearSlot(slotIdx) {
+        if (isTransitioning || !slotValues[slotIdx]) return;
+        slotValues[slotIdx] = null;
+        sfx.remove();
+        renderSlots();
+        updateSubmitState();
+      }
+
+      function renderSlots() {
+        slots.forEach((slotEl, idx) => {
+          slotEl.classList.remove('slot-correct', 'slot-wrong');
+          const val = slotValues[idx];
+
+          if (val) {
+            slotEl.classList.add('filled');
+            slotEl.innerHTML = `
+              <button type="button" class="placed-tile word-tile text-xl sm:text-2xl font-bold px-3" data-group="${val.group}">
+                ${val.word}
+              </button>
+            `;
+            // Allow clicking a filled slot to remove/return the tile
+            slotEl.querySelector('.placed-tile').addEventListener('click', () => clearSlot(idx));
+          } else {
+            slotEl.classList.remove('filled');
+            slotEl.innerHTML = '';
+          }
+        });
+      }
+
+      function updateSubmitState() {
+        const allFilled = slotValues.every(v => v !== null);
+        btnSubmit.disabled = !allFilled || isTransitioning;
+      }
+
+      /* =====================================================================
+       * 7. ROUND PROGRESSION & VALIDATION
+       * ===================================================================== */
+      function loadRound() {
+        isTransitioning = false;
+        slotValues = [null, null, null];
+        renderSlots();
+        updateSubmitState();
+
+        const round = rounds[currentRoundIdx];
+        renderSceneImage(round);
+      }
+
+      function checkAnswer() {
+        if (isTransitioning || slotValues.some(v => v === null)) return;
+
+        const round = rounds[currentRoundIdx];
+        const expected = [round.demo, round.article, round.noun];
+        let allCorrect = true;
+
+        slots.forEach((slotEl, idx) => {
+          const isMatch = slotValues[idx].word === expected[idx];
+          if (isMatch) {
+            slotEl.classList.add('slot-correct');
+          } else {
+            slotEl.classList.add('slot-wrong');
+            allCorrect = false;
+          }
+        });
+
+        if (!allCorrect) {
+          sfx.error();
+          elSentenceCard.classList.remove('shake');
+          void elSentenceCard.offsetWidth; // trigger reflow
+          elSentenceCard.classList.add('shake');
+
+          // Clear only wrong slots after brief visual cue so user can fix them
+          setTimeout(() => {
+            slots.forEach((slotEl, idx) => {
+              if (slotEl.classList.contains('slot-wrong')) {
+                slotValues[idx] = null;
+              }
+            });
+            renderSlots();
+            updateSubmitState();
+          }, 620);
+          return;
+        }
+
+        // Correct Answer!
+        isTransitioning = true;
+        btnSubmit.disabled = true;
+        currentRoundIdx++;
+
+        const earnedNewStar = currentRoundIdx % 2 === 0;
+        if (earnedNewStar) {
+          sfx.starEarned();
+        } else {
+          sfx.correct();
+        }
+
+        const btnRect = btnSubmit.getBoundingClientRect();
+        spawnConfetti(btnRect.left + btnRect.width / 2, btnRect.top, earnedNewStar ? 48 : 26);
+        renderProgressBar(earnedNewStar);
+
+        setTimeout(() => {
+          if (currentRoundIdx >= TOTAL_ROUNDS) {
+            showVictoryScreen();
+          } else {
+            loadRound();
+          }
+        }, 900);
+      }
+
+      function showVictoryScreen() {
+        sfx.victory();
+        elGameStage.classList.add('hidden');
+        elTileBankWrapper.classList.add('hidden');
+        elVictoryScreen.classList.remove('hidden');
+        elVictoryScreen.classList.add('flex');
+
+        elVictoryStars.innerHTML = '';
+        for (let i = 0; i < TOTAL_STARS; i++) {
+          const starWrap = document.createElement('div');
+          starWrap.className = 'w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-amber-50 border-2 border-amber-200 flex items-center justify-center star-earned';
+          starWrap.style.animationDelay = `${i * 0.08}s`;
+          starWrap.innerHTML = `
+            <svg class="w-8 h-8 sm:w-9 sm:h-9 text-amber-400" viewBox="0 0 24 24" fill="currentColor" stroke="#d97706" stroke-width="1.8" stroke-linejoin="round">
+              <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+            </svg>
+          `;
+          elVictoryStars.appendChild(starWrap);
+        }
+
+        spawnConfetti(window.innerWidth * 0.3, window.innerHeight * 0.4, 45);
+        spawnConfetti(window.innerWidth * 0.7, window.innerHeight * 0.4, 45);
+      }
+
+      function startNewGame() {
+        rounds = generateRounds();
+        currentRoundIdx = 0;
+        elVictoryScreen.classList.add('hidden');
+        elVictoryScreen.classList.remove('flex');
+        elGameStage.classList.remove('hidden');
+        elTileBankWrapper.classList.remove('hidden');
+
+        renderProgressBar(false);
+        loadRound();
+      }
+
+      /* =====================================================================
+       * 8. BUTTON CONTROLS (Submit, Clear, Sound, Fullscreen, Replay)
+       * ===================================================================== */
+      btnSubmit.addEventListener('click', checkAnswer);
+
+      btnClear.addEventListener('click', () => {
+        if (isTransitioning) return;
+        if (slotValues.some(v => v !== null)) {
+          slotValues = [null, null, null];
+          sfx.remove();
+          renderSlots();
+          updateSubmitState();
+        }
+      });
+
+      btnSound.addEventListener('click', () => {
+        sfx.muted = !sfx.muted;
+        document.getElementById('icon-sound-on').classList.toggle('hidden', sfx.muted);
+        document.getElementById('icon-sound-off').classList.toggle('hidden', !sfx.muted);
+        if (!sfx.muted) sfx.pickup();
+      });
+
+      // Functional Fullscreen Toggle
+      function updateFullscreenIcon() {
+        const isFs = !!(document.fullscreenElement || document.webkitFullscreenElement);
+        document.getElementById('icon-fs-enter').classList.toggle('hidden', isFs);
+        document.getElementById('icon-fs-exit').classList.toggle('hidden', !isFs);
+      }
+
+      btnFullscreen.addEventListener('click', () => {
+        const docEl = document.documentElement;
+        const isFs = !!(document.fullscreenElement || document.webkitFullscreenElement);
+
+        if (!isFs) {
+          if (docEl.requestFullscreen) {
+            docEl.requestFullscreen().catch(() => {});
+          } else if (docEl.webkitRequestFullscreen) {
+            docEl.webkitRequestFullscreen();
+          }
+        } else {
+          if (document.exitFullscreen) {
+            document.exitFullscreen().catch(() => {});
+          } else if (document.webkitExitFullscreen) {
+            document.webkitExitFullscreen();
+          }
+        }
+      });
+
+      document.addEventListener('fullscreenchange', updateFullscreenIcon);
+      document.addEventListener('webkitfullscreenchange', updateFullscreenIcon);
+
+      btnReplay.addEventListener('click', () => {
+        sfx.pickup();
+        startNewGame();
+      });
+
+      // Initialize Game
+      buildTileBank();
+      startNewGame();
+    })();
+  </script>
+</body>
+</html>
